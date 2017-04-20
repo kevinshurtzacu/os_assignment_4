@@ -1,57 +1,35 @@
-# Makefile for kernel
+# Makefile for all system servers.
+#
+MAKE = exec make -$(MAKEFLAGS)
 
-include /etc/make.conf
+usage:
+	@echo "" >&2
+	@echo "Makefile for all system servers." >&2
+	@echo "Usage:" >&2
+	@echo "	make build    # Compile all system servers locally" >&2
+	@echo "	make image    # Compile servers in boot image" >&2
+	@echo "	make clean    # Remove local compiler results" >&2
+	@echo "	make install  # Install servers to /etc/servers/" >&2
+	@echo "	                (requires root privileges)" >&2
+	@echo "" >&2
 
-# Directories
-u = /usr
-i = $u/include
-l = $u/lib
-s = system
-a = arch/$(ARCH)
+build: all
+all install depend clean:
+	cd ./pm && $(MAKE) $@
+	cd ./vfs && $(MAKE) $@
+	cd ./mfs && $(MAKE) $@
+	cd ./rs && $(MAKE) $@
+	cd ./ds && $(MAKE) $@
+	cd ./is && $(MAKE) $@
+	cd ./init && $(MAKE) $@
+	cd ./inet && $(MAKE) $@
 
-# Programs, flags, etc.
-CC =	exec cc
-CPP =	$l/cpp
-LD =	$(CC) -.o
-CPPFLAGS=-I$i -I$a/include
-CFLAGS=$(CPROFILE) $(CPPFLAGS) $(EXTRA_OPTS)
-LDFLAGS=-i 
+image:
+	cd ./pm && $(MAKE) EXTRA_OPTS=$(EXTRA_OPTS) build
+	cd ./vfs && $(MAKE) EXTRA_OPTS=$(EXTRA_OPTS) build
+	cd ./mfs && $(MAKE) EXTRA_OPTS=$(EXTRA_OPTS) build
+	cd ./rs && $(MAKE) EXTRA_OPTS=$(EXTRA_OPTS) build
+	cd ./ds && $(MAKE) EXTRA_OPTS=$(EXTRA_OPTS) build
+	cd ./init && $(MAKE) EXTRA_OPTS=$(EXTRA_OPTS) build
 
-# first-stage, arch-dependent startup code
-HEAD =	head.o
-FULLHEAD = $a/$(HEAD)
 
-OBJS =	start.o table.o main.o proc.o \
-	system.o clock.o utility.o debug.o profile.o interrupt.o
-SYSTEM = system.a
-ARCHLIB = $a/$(ARCH).a
-LIBS = -ltimers -lsysutil
-
-# What to make.
-all: build 
-kernel build install: $(HEAD) $(OBJS) 
-	cd system && $(MAKE) $@
-	cd $a && $(MAKE) $@
-	$(LD) $(CFLAGS) $(LDFLAGS) -o kernel $(FULLHEAD) $(OBJS) \
-		$(SYSTEM) $(ARCHLIB) $(LIBS)
-	install -S 0 kernel
-
-clean:
-	cd system && $(MAKE) -$(MAKEFLAGS) $@
-	cd $a && $(MAKE) -$(MAKEFLAGS) $@
-	rm -f *.a *.o *~ *.bak kernel
-
-depend: 
-	cd system && $(MAKE) -$(MAKEFLAGS) $@
-	cd $a && $(MAKE) $@
-	mkdep "$(CC) -E $(CPPFLAGS)" *.c > .depend
-
-# How to build it
-.c.o:
-	$(CC) $(CFLAGS) -c -o $@ $<
-
-$(HEAD): 
-	cd $a && make HEAD=$(HEAD) $(HEAD)
-
-# Include generated dependencies.
-include .depend
