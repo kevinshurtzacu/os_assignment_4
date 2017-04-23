@@ -113,14 +113,14 @@ PUBLIC int do_freemem()
  *				do_procstat				     *
  *===========================================================================*/
 PUBLIC int do_procstat()
-{ 
-  /* For the moment, this is only used to return pending signals to 
-   * system processes that request the PM for their own status. 
+{
+  /* For the moment, this is only used to return pending signals to
+   * system processes that request the PM for their own status.
    *
    * Future use might include the FS requesting for process status of
-   * any user process. 
+   * any user process.
    */
-  
+
   /* This call should be removed, or made more general. */
   if (mp->mp_effuid != 0)
   {
@@ -132,7 +132,7 @@ PUBLIC int do_procstat()
   if (m_in.stat_nr == SELF) {
       mp->mp_reply.sig_set = mp->mp_sigpending;
       sigemptyset(&mp->mp_sigpending);
-  } 
+  }
   else {
       return(ENOSYS);
   }
@@ -174,7 +174,7 @@ PUBLIC int do_sysuname()
 	/* Copy an uname string to the user. */
 	n = strlen(string) + 1;
 	if (n > m_in.sysuname_len) n = m_in.sysuname_len;
-	r = sys_vircopy(SELF, D, (phys_bytes) string, 
+	r = sys_vircopy(SELF, D, (phys_bytes) string,
 		mp->mp_endpoint, D, (phys_bytes) m_in.sysuname_value,
 		(phys_bytes) n);
 	if (r < 0) return(r);
@@ -220,15 +220,13 @@ PUBLIC int do_getsysinfo()
 
   /* This call leaks important information (the contents of registers).
    * harmless data (such as the load should get their own calls)
-   *
-   * if (mp->mp_effuid != 0)
-   * {
-   *	printf("PM: unauthorized call of do_getsysinfo by proc %d '%s'\n",
-   *		mp->mp_endpoint, mp->mp_name);
-   *	sig_proc(mp, SIGEMT);
-   *	return EPERM;
-   * }
    */
+  if (mp->mp_effuid != 0) {
+      printf("PM: unauthorized call of do_getsysinfo by proc %d '%s'\n",
+      mp->mp_endpoint, mp->mp_name);
+      sig_proc(mp, SIGEMT);
+      return EPERM;
+  }
 
   switch(m_in.info_what) {
   case SI_KINFO:			/* kernel info is obtained via PM */
@@ -240,7 +238,7 @@ PUBLIC int do_getsysinfo()
   	proc_addr = &mproc[0];
   	src_addr = (vir_bytes) &proc_addr;
   	len = sizeof(struct mproc *);
-  	break; 
+  	break;
   case SI_PROC_TAB:			/* copy entire process table */
         src_addr = (vir_bytes) mproc;
         len = sizeof(struct mproc) * NR_PROCS;
@@ -268,7 +266,7 @@ PUBLIC int do_getsysinfo()
   case SI_CALL_STATS:
   	src_addr = (vir_bytes) calls_stats;
   	len = sizeof(calls_stats);
-  	break; 
+  	break;
 #endif
   default:
   	return(EINVAL);
@@ -311,6 +309,22 @@ PUBLIC int do_getsysinfo_up()
   return(real_len);
 }
 
+
+/*===========================================================================*
+ *				do_showsysinfo			       	     *
+ *===========================================================================*/
+PUBLIC char *do_showsysinfo()
+{
+  struct pm_mem_info pmi;
+  char *output = "This suggests that some things are working...";
+  int i;
+
+  getsysinfo(PM_PROC_NR, SI_MEM_ALLOC, &pmi);
+
+  return output;
+}
+
+
 /*===========================================================================*
  *				do_getprocnr			             *
  *===========================================================================*/
@@ -334,23 +348,23 @@ PUBLIC int do_getprocnr()
 		if ((rmp->mp_flags & IN_USE) && (rmp->mp_pid==m_in.pid)) {
   			mp->mp_reply.endpt = rmp->mp_endpoint;
   			return(OK);
-		} 
+		}
 	}
-  	return(ESRCH);			
+  	return(ESRCH);
   } else if (m_in.namelen > 0) {	/* lookup process by name */
   	key_len = MIN(m_in.namelen, PROC_NAME_LEN);
- 	if (OK != (s=sys_datacopy(who_e, (vir_bytes) m_in.addr, 
- 			SELF, (vir_bytes) search_key, key_len))) 
+ 	if (OK != (s=sys_datacopy(who_e, (vir_bytes) m_in.addr,
+ 			SELF, (vir_bytes) search_key, key_len)))
  		return(s);
  	search_key[key_len] = '\0';	/* terminate for safety */
   	for (rmp = &mproc[0]; rmp < &mproc[NR_PROCS]; rmp++) {
-		if (((rmp->mp_flags & (IN_USE | ZOMBIE)) == IN_USE) && 
+		if (((rmp->mp_flags & (IN_USE | ZOMBIE)) == IN_USE) &&
 			strncmp(rmp->mp_name, search_key, key_len)==0) {
   			mp->mp_reply.endpt = rmp->mp_endpoint;
   			return(OK);
-		} 
+		}
 	}
-  	return(ESRCH);			
+  	return(ESRCH);
   } else {			/* return own/parent process number */
   	mp->mp_reply.endpt = who_e;
 	mp->mp_reply.pendpt = mproc[mp->mp_parent].mp_endpoint;
@@ -371,7 +385,7 @@ PUBLIC int do_reboot()
 
   /* See how the system should be aborted. */
   abort_flag = (unsigned) m_in.reboot_flag;
-  if (abort_flag >= RBT_INVALID) return(EINVAL); 
+  if (abort_flag >= RBT_INVALID) return(EINVAL);
   if (RBT_MONITOR == abort_flag) {
 	int r;
 	if(m_in.reboot_strlen >= sizeof(monitor_code))
@@ -386,7 +400,7 @@ PUBLIC int do_reboot()
 
   /* Order matters here. When FS is told to reboot, it exits all its
    * processes, and then would be confused if they're exited again by
-   * SIGKILL. So first kill, then reboot. 
+   * SIGKILL. So first kill, then reboot.
    */
 
   check_sig(-1, SIGKILL); 		/* kill all users except init */
@@ -395,7 +409,7 @@ PUBLIC int do_reboot()
   report_reboot= 1;
   r= notify(FS_PROC_NR);
   if (r != OK) panic("pm", "do_reboot: unable to notify FS", r);
-  
+
   return(SUSPEND);			/* don't reply to caller */
 }
 
@@ -438,7 +452,7 @@ PUBLIC int do_getsetpriority()
 	/* Only root is allowed to reduce the nice level. */
 	if (rmp->mp_nice > arg_pri && mp->mp_effuid != SUPER_USER)
 		return(EACCES);
-	
+
 	/* We're SET, and it's allowed. Do it and tell kernel. */
 	rmp->mp_nice = arg_pri;
 	return sys_nice(rmp->mp_endpoint, arg_pri);
@@ -475,8 +489,8 @@ PUBLIC int do_svrctl()
       size_t copy_len;
 
       /* Copy sysgetenv structure to PM. */
-      if (sys_datacopy(who_e, ptr, SELF, (vir_bytes) &sysgetenv, 
-              sizeof(sysgetenv)) != OK) return(EFAULT);  
+      if (sys_datacopy(who_e, ptr, SELF, (vir_bytes) &sysgetenv,
+              sizeof(sysgetenv)) != OK) return(EFAULT);
 
       /* Set a param override? */
       if (req == MMSETPARAM) {
@@ -488,7 +502,7 @@ PUBLIC int do_svrctl()
   	 || sysgetenv.vallen >=
   	 	 sizeof(local_param_overrides[local_params].value))
   		return EINVAL;
-  		
+
           if ((s = sys_datacopy(who_e, (vir_bytes) sysgetenv.key,
             SELF, (vir_bytes) local_param_overrides[local_params].name,
                sysgetenv.keylen)) != OK)
@@ -508,7 +522,7 @@ PUBLIC int do_svrctl()
       if (sysgetenv.keylen == 0) {	/* copy all parameters */
           val_start = monitor_params;
           val_len = sizeof(monitor_params);
-      } 
+      }
       else {				/* lookup value for key */
       	  int p;
           /* Try to get a copy of the requested key. */
@@ -537,8 +551,8 @@ PUBLIC int do_svrctl()
       	return E2BIG;
 
       /* Value found, make the actual copy (as far as possible). */
-      copy_len = MIN(val_len, sysgetenv.vallen); 
-      if ((s=sys_datacopy(SELF, (vir_bytes) val_start, 
+      copy_len = MIN(val_len, sysgetenv.vallen);
+      if ((s=sys_datacopy(SELF, (vir_bytes) val_start,
               who_e, (vir_bytes) sysgetenv.val, copy_len)) != OK)
           return(s);
 
@@ -583,4 +597,3 @@ char *brk_addr;
 	_brksize = brk_addr;
 	return 0;
 }
-

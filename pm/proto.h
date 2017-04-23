@@ -72,7 +72,7 @@ _PROTOTYPE( int do_svrctl, (void)					);
 _PROTOTYPE( int do_allocmem, (void)					);
 _PROTOTYPE( int do_freemem, (void)					);
 _PROTOTYPE( int do_getsetpriority, (void)				);
-
+_PROTOTYPE( char *do_showsysinfo, (void)			);
 
 #if (MACHINE == MACINTOSH)
 _PROTOTYPE( phys_clicks start_click, (void)				);
@@ -106,7 +106,7 @@ _PROTOTYPE( int do_times, (void)					);
 _PROTOTYPE( int do_gettimeofday, (void)					);
 
 /* timers.c */
-_PROTOTYPE( void pm_set_timer, (timer_t *tp, int delta, 
+_PROTOTYPE( void pm_set_timer, (timer_t *tp, int delta,
 	tmr_func_t watchdog, int arg));
 _PROTOTYPE( void pm_expire_timers, (clock_t now));
 _PROTOTYPE( void pm_cancel_timer, (timer_t *tp));
@@ -124,4 +124,3 @@ _PROTOTYPE( int get_mem_map, (int proc_nr, struct mem_map *mem_map)	);
 _PROTOTYPE( char *find_param, (const char *key));
 _PROTOTYPE( int proc_from_pid, (pid_t p));
 _PROTOTYPE( int pm_isokendpt, (int ep, int *proc));
-
